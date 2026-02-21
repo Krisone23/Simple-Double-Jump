@@ -1,0 +1,94 @@
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+
+local JumpConfig = require(script.Parent.JumpConfig)
+
+local DataManager = {}
+
+local JumpStore = DataStoreService:GetDataStore("JumpUpgradeData_v1")
+
+local SessionData = {}
+
+local function getDefaultData()
+	return {
+		JumpUpgradeLevel = 1,
+		Gems = 0,
+	}
+end
+
+function DataManager:LoadPlayer(player)
+	local userId = tostring(player.UserId)
+	local success, data = pcall(function()
+		return JumpStore:GetAsync(userId)
+	end)
+
+	if success and data then
+		local default = getDefaultData()
+		for key, value in pairs(default) do
+			if data[key] == nil then
+				data[key] = value
+			end
+		end
+		SessionData[userId] = data
+	else
+		if not success then
+			warn("[DataManager] Failed to load data for", player.Name, ":", data)
+		end
+		SessionData[userId] = getDefaultData()
+	end
+
+	print("[DataManager] Loaded data for", player.Name, ":", SessionData[userId])
+end
+
+function DataManager:SavePlayer(player)
+	local userId = tostring(player.UserId)
+	local data = SessionData[userId]
+	if not data then return end
+
+	local success, err = pcall(function()
+		JumpStore:SetAsync(userId, data)
+	end)
+
+	if success then
+		print("[DataManager] Saved data for", player.Name)
+	else
+		warn("[DataManager] Failed to save data for", player.Name, ":", err)
+	end
+end
+
+function DataManager:RemovePlayer(player)
+	local userId = tostring(player.UserId)
+	SessionData[userId] = nil
+end
+
+function DataManager:GetJumpLevel(player)
+	local data = SessionData[tostring(player.UserId)]
+	if not data then return 1 end
+	return data.JumpUpgradeLevel or 1
+end
+
+function DataManager:SetJumpLevel(player, level)
+	local data = SessionData[tostring(player.UserId)]
+	if not data then return end
+	data.JumpUpgradeLevel = level
+end
+
+function DataManager:GetGems(player)
+	local data = SessionData[tostring(player.UserId)]
+	if not data then return 0 end
+	return data.Gems or 0
+end
+
+function DataManager:DeductGems(player, amount)
+	local data = SessionData[tostring(player.UserId)]
+	if not data then return end
+	data.Gems = math.max(0, (data.Gems or 0) - amount)
+end
+
+function DataManager:AddGems(player, amount)
+	local data = SessionData[tostring(player.UserId)]
+	if not data then return end
+	data.Gems = (data.Gems or 0) + amount
+end
+
+return DataManager
