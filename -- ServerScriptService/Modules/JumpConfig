@@ -1,0 +1,15 @@
+local JumpConfig = {}
+
+JumpConfig.DefaultExtraJumps = 1 -- everyone starts with 1 extra jump 
+
+JumpConfig.Upgrades = {
+	[1] = { ExtraJumps = 1, Cost = 0,    Label = "Default"  },
+	[2] = { ExtraJumps = 2, Cost = 100,  Label = "Double"   },
+	[3] = { ExtraJumps = 3, Cost = 300,  Label = "Triple"   },
+	[4] = { ExtraJumps = 4, Cost = 700,  Label = "Quad"     },
+	[5] = { ExtraJumps = 5, Cost = 1500, Label = "Penta"    },
+}
+
+JumpConfig.DataKey = "JumpUpgradeLevel" -- the key used inside the existing datastore profile
+
+return JumpConfig
