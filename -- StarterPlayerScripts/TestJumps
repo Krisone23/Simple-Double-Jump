@@ -1,0 +1,15 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Remotes = ReplicatedStorage:WaitForChild("JumpRemotes")
+local TestRemote = Remotes:WaitForChild("TestJumps")
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.E then
+		TestRemote:FireServer("increase")
+	elseif input.KeyCode == Enum.KeyCode.Q then
+		TestRemote:FireServer("decrease")
+	end
+end)
