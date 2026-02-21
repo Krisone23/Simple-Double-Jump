@@ -1,0 +1,25 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = ReplicatedStorage:WaitForChild("JumpRemotes")
+local SyncJumps = Remotes:WaitForChild("SyncJumps")
+
+-- Test remote just for debugging
+local TestRemote = Instance.new("RemoteEvent")
+TestRemote.Name = "TestJumps"
+TestRemote.Parent = Remotes
+
+local playerJumps = {}
+
+TestRemote.OnServerEvent:Connect(function(player, action)
+	local current = playerJumps[player] or 1
+
+	if action == "increase" then
+		current = math.min(current + 1, 10)
+	elseif action == "decrease" then
+		current = math.max(current - 1, 1)
+	end
+
+	playerJumps[player] = current
+	print("[TEST] ".. player.Name .." jumps set to:", current)
+	SyncJumps:FireClient(player, nil, current)
+end)
