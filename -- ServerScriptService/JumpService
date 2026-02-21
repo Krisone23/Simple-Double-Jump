@@ -1,0 +1,58 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Modules = ServerScriptService:WaitForChild("Modules")
+local JumpConfig = require(Modules:WaitForChild("JumpConfig"))
+local DataManager = require(Modules:WaitForChild("DataManager"))
+
+local Remotes = ReplicatedStorage:WaitForChild("JumpRemotes")
+local RequestUpgrade = Remotes:WaitForChild("RequestUpgrade")
+local GetJumpData = Remotes:WaitForChild("GetJumpData")
+local SyncJumps = Remotes:WaitForChild("SyncJumps")
+
+Players.PlayerAdded:Connect(function(player)
+	DataManager:LoadPlayer(player)
+	task.wait(0.5)
+	local level = DataManager:GetJumpLevel(player)
+	local upgradeData = JumpConfig.Upgrades[level]
+	SyncJumps:FireClient(player, level, upgradeData.ExtraJumps)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	DataManager:SavePlayer(player)
+	DataManager:RemovePlayer(player)
+end)
+
+game:BindToClose(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		DataManager:SavePlayer(player)
+	end
+end)
+
+GetJumpData.OnServerInvoke = function(player)
+	local level = DataManager:GetJumpLevel(player)
+	local upgradeData = JumpConfig.Upgrades[level]
+	return level, upgradeData.ExtraJumps, DataManager:GetGems(player)
+end
+
+RequestUpgrade.OnServerInvoke = function(player)
+	local currentLevel = DataManager:GetJumpLevel(player)
+	local nextLevel = currentLevel + 1
+	local nextUpgrade = JumpConfig.Upgrades[nextLevel]
+
+	if not nextUpgrade then
+		return false, "Max level reached"
+	end
+
+	local gems = DataManager:GetGems(player)
+	if gems < nextUpgrade.Cost then
+		return false, "Not enough gems"
+	end
+
+	DataManager:DeductGems(player, nextUpgrade.Cost)
+	DataManager:SetJumpLevel(player, nextLevel)
+	SyncJumps:FireClient(player, nextLevel, nextUpgrade.ExtraJumps)
+
+	return true, nextLevel, nextUpgrade.ExtraJumps
+end
