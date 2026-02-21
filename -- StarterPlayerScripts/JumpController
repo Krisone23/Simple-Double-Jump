@@ -1,0 +1,81 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local Remotes = ReplicatedStorage:WaitForChild("JumpRemotes")
+local GetJumpData = Remotes:WaitForChild("GetJumpData")
+local SyncJumps = Remotes:WaitForChild("SyncJumps")
+
+local maxExtraJumps = 1
+local jumpsRemaining = 0
+
+local function updateGUI(remaining, maxJumps)
+	print("[JUMPS] Remaining:", remaining, "Max:", maxJumps)
+end
+
+local level, extraJumps = GetJumpData:InvokeServer()
+maxExtraJumps = extraJumps
+jumpsRemaining = extraJumps
+updateGUI(jumpsRemaining, maxExtraJumps)
+
+SyncJumps.OnClientEvent:Connect(function(newLevel, newExtraJumps)
+	maxExtraJumps = newExtraJumps
+	jumpsRemaining = newExtraJumps
+	updateGUI(jumpsRemaining, maxExtraJumps)
+end)
+
+local function setupCharacter(char)
+	local humanoid = char:WaitForChild("Humanoid")
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	local jumping = false
+	jumpsRemaining = maxExtraJumps
+
+	humanoid.StateChanged:Connect(function(_, new)
+		if new == Enum.HumanoidStateType.Landed or new == Enum.HumanoidStateType.Running then
+			jumpsRemaining = maxExtraJumps
+			jumping = false
+			updateGUI(jumpsRemaining, maxExtraJumps)
+		end
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if input.KeyCode ~= Enum.KeyCode.Space then return end
+
+		local state = humanoid:GetState()
+		local airborne = state == Enum.HumanoidStateType.Freefall
+			or state == Enum.HumanoidStateType.Jumping
+			or state == Enum.HumanoidStateType.FallingDown
+
+		if airborne and jumpsRemaining > 0 and not jumping then
+			jumping = true
+			jumpsRemaining -= 1
+			updateGUI(jumpsRemaining, maxExtraJumps)
+
+			-- Zero out vertical velocity to create hover effect
+			hrp.AssemblyLinearVelocity = Vector3.new(
+				hrp.AssemblyLinearVelocity.X,
+				0,
+				hrp.AssemblyLinearVelocity.Z
+			)
+
+			-- Hover for a tiny moment
+			task.wait(0.18)
+
+			-- Launch up with extra power
+			hrp.AssemblyLinearVelocity = Vector3.new(
+				hrp.AssemblyLinearVelocity.X,
+				humanoid.JumpPower * 1.2,
+				hrp.AssemblyLinearVelocity.Z
+			)
+
+			task.wait(0.3)
+			jumping = false
+		end
+	end)
+end
+
+local char = player.Character or player.CharacterAdded:Wait()
+setupCharacter(char)
+player.CharacterAdded:Connect(setupCharacter)
